@@ -20,6 +20,7 @@ public class СфСCardGame extends ApplicationAdapter {
     private static final int TOTAL_PAIRS = 8;
     private static final float PREVIEW_SECONDS = 5f;
     private static final float MISMATCH_DELAY_SECONDS = 1.2f;
+    private static final float CARD_ASPECT_RATIO = 0.68f;
 
     private SpriteBatch batch;
     private OrthographicCamera camera;
@@ -42,6 +43,12 @@ public class СфСCardGame extends ApplicationAdapter {
     private boolean inputLocked;
     private boolean win;
 
+    private float uiScale;
+    private float boardOffsetX;
+    private float boardOffsetY;
+    private float boardWidth;
+    private float boardHeight;
+
     @Override
     public void create() {
         batch = new SpriteBatch();
@@ -59,7 +66,6 @@ public class СфСCardGame extends ApplicationAdapter {
         }
 
         buildShuffledCards();
-    resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         previewPhase = true;
         inputLocked = true;
@@ -98,20 +104,9 @@ public class СфСCardGame extends ApplicationAdapter {
 
         cards = new Array<>();
 
-        int textureIndex = 0;
-        for (int row = 0; row < GRID_SIZE; row++) {
-            for (int col = 0; col < GRID_SIZE; col++) {
-                cards.add(new Card(pairTextures.get(textureIndex++), backCardTexture, new Rectangle(), true));
-            }
-        }
-
-        layoutCards(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-    }
-
-    private void layoutCards(float width, float height) {
-        float padding = Math.max(12f, Math.min(width, height) * 0.02f);
-        float availableWidth = width - (padding * (GRID_SIZE + 1));
-        float availableHeight = height - (padding * (GRID_SIZE + 1));
+        float padding = 12f;
+        float availableWidth = Gdx.graphics.getWidth() - (padding * (GRID_SIZE + 1));
+        float availableHeight = Gdx.graphics.getHeight() - (padding * (GRID_SIZE + 1));
         float cardWidth = availableWidth / GRID_SIZE;
         float cardHeight = availableHeight / GRID_SIZE;
 
@@ -119,8 +114,47 @@ public class СфСCardGame extends ApplicationAdapter {
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
                 float x = padding + col * (cardWidth + padding);
-                float y = height - padding - (row + 1) * cardHeight - row * padding;
-                cards.get(index++).setBounds(x, y, cardWidth, cardHeight);
+                float y = Gdx.graphics.getHeight() - padding - (row + 1) * cardHeight - row * padding;
+                Rectangle bounds = new Rectangle(x, y, cardWidth, cardHeight);
+                cards.add(new Card(pairTextures.get(textureIndex++), backCardTexture, bounds, true));
+            }
+        }
+    }
+
+    private void layoutBoard(int width, int height) {
+        uiScale = Math.max(1f, Math.min(width, height) / 540f);
+        font.getData().setScale(uiScale);
+
+        float outerMargin = 16f * uiScale;
+        float topHudHeight = 42f * uiScale;
+        float bottomMargin = 18f * uiScale;
+        float gap = 10f * uiScale;
+
+        float availableWidth = width - (2f * outerMargin);
+        float availableHeight = height - topHudHeight - bottomMargin;
+
+        float cardHeightByHeight = (availableHeight - gap * (GRID_SIZE - 1)) / GRID_SIZE;
+        float cardWidthByHeight = cardHeightByHeight * CARD_ASPECT_RATIO;
+
+        float cardWidthByWidth = (availableWidth - gap * (GRID_SIZE - 1)) / GRID_SIZE;
+        float cardHeightByWidth = cardWidthByWidth / CARD_ASPECT_RATIO;
+
+        float cardWidth = Math.min(cardWidthByWidth, cardWidthByHeight);
+        float cardHeight = Math.min(cardHeightByWidth, cardHeightByHeight);
+
+        boardWidth = GRID_SIZE * cardWidth + (GRID_SIZE - 1) * gap;
+        boardHeight = GRID_SIZE * cardHeight + (GRID_SIZE - 1) * gap;
+        boardOffsetX = (width - boardWidth) / 2f;
+        boardOffsetY = bottomMargin;
+
+        for (int row = 0; row < GRID_SIZE; row++) {
+            for (int col = 0; col < GRID_SIZE; col++) {
+                int index = row * GRID_SIZE + col;
+                Rectangle bounds = cards.get(index).getBounds();
+                bounds.x = boardOffsetX + col * (cardWidth + gap);
+                bounds.y = boardOffsetY + (GRID_SIZE - 1 - row) * (cardHeight + gap);
+                bounds.width = cardWidth;
+                bounds.height = cardHeight;
             }
         }
     }
@@ -167,9 +201,9 @@ public class СфСCardGame extends ApplicationAdapter {
         }
 
         if (previewPhase) {
-            font.draw(batch, "Memorize the cards: " + Math.max(0, (int) Math.ceil(previewTimer)) + "s", 20, 35);
+            font.draw(batch, "Memorize the cards: " + Math.max(0, (int) Math.ceil(previewTimer)) + "s", boardOffsetX, Gdx.graphics.getHeight() - 12f * uiScale);
         } else if (win) {
-            font.draw(batch, "You Win!", viewport.getWorldWidth() / 2f - 60f, viewport.getWorldHeight() / 2f);
+            font.draw(batch, "You Win!", Gdx.graphics.getWidth() / 2f - 60f, Gdx.graphics.getHeight() / 2f);
         }
 
         batch.end();
@@ -212,6 +246,11 @@ public class СфСCardGame extends ApplicationAdapter {
     private void resetSelection() {
         firstSelected = null;
         secondSelected = null;
+    }
+
+    @Override
+    public void resize(int width, int height) {
+        layoutBoard(width, height);
     }
 
     @Override
