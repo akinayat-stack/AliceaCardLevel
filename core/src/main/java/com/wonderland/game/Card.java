@@ -31,6 +31,10 @@ public class Card {
         return bounds;
     }
 
+    public void setBounds(float x, float y, float width, float height) {
+        bounds.set(x, y, width, height);
+    }
+
     public Texture getFrontTexture() {
         return frontTexture;
     }
